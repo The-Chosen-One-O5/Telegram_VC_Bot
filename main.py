@@ -3,6 +3,8 @@ from __future__ import unicode_literals
 import asyncio
 import os
 import traceback
+import threading
+from flask import Flask
 
 import pytgcalls
 from pyrogram import filters, idle
@@ -378,12 +380,26 @@ Example:
         await start_queue(message)
 
 
-async def main():
+async def run_bot():
     await app.start()
     print("Bot started!")
     await idle()
     await session.close()
 
 
-loop = asyncio.get_event_loop()
-loop.run_until_complete(main())
+# Flask integration for Render health check
+flask_app = Flask(__name__)
+
+@flask_app.route('/')
+def health():
+    return 'Bot alive!'
+
+if __name__ == '__main__':
+    # Start bot in background thread
+    bot_thread = threading.Thread(target=lambda: asyncio.run(run_bot()))
+    bot_thread.daemon = True
+    bot_thread.start()
+    
+    # Run Flask on PORT
+    port = int(os.environ.get('PORT', 10000))
+    flask_app.run(host='0.0.0.0', port=port, debug=False)
